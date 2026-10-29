@@ -1,4 +1,5 @@
 name: Deploy ad admin panel to GitHub Pages
+# The admin/ folder is published as the site root, so use / rather than /admin/ in the public URL.
 on:
   push:
     branches: ["main"]
