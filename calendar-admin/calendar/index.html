@@ -750,7 +750,7 @@ if (!navigator.onLine) {
   <div class="atc-ad-inner">
     <span class="atc-ad-label">تبلیغات</span>
     <button type="button" class="atc-ad-close" aria-label="بستن تبلیغ" title="بستن تبلیغ">×</button>
-    <a id="atcOnlineAdLink" href="#" target="_blank" rel="noopener noreferrer" aria-label="مشاهده تبلیغ"><img id="atcOnlineAdImage" alt="تبلیغ" loading="lazy"></a>
+    <a id="atcOnlineAdLink" href="#" target="_blank" rel="noopener noreferrer" aria-label="مشاهده تبلیغ"><img id="atcOnlineAdImage" alt="تبلیغ" loading="eager" fetchpriority="high" decoding="async"></a>
     <div class="atc-ad-dots" id="atcOnlineAdDots" aria-hidden="true"></div>
   </div>
 </div>
