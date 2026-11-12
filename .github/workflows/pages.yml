@@ -1,10 +1,9 @@
-name: Deploy ad admin panel to GitHub Pages
-# The admin/ folder is published as the site root, so use / rather than /admin/ in the public URL.
+name: Deploy calendar ad admin panel to GitHub Pages
 on:
   push:
     branches: ["main"]
     paths:
-      - "admin/**"
+      - "calendar-admin/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 permissions:
@@ -25,10 +24,10 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
-      - name: Upload admin panel only
+      - name: Upload calendar admin panel only
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "admin"
+          path: "calendar-admin"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
