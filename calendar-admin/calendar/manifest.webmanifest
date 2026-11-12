@@ -1,0 +1,22 @@
+{
+  "id": "./",
+  "name": "تقویم کنترلر ترافیک هوایی",
+  "short_name": "ATC Calendar",
+  "description": "تقویم شیفت کنترلر ترافیک هوایی",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eaf6ff",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
