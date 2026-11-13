@@ -722,7 +722,15 @@ body.light-theme .btn-primary {
 </style>
 
 <style id="atc-online-ad-style">
-#atcOnlineAd{display:none;max-width:980px;margin:10px auto 14px;padding:0 12px;box-sizing:border-box;direction:rtl}#atcOnlineAd .atc-ad-inner{position:relative;border:1px solid rgba(100,116,139,.25);border-radius:12px;overflow:hidden;background:#f8fafc;box-shadow:0 2px 8px rgba(15,23,42,.08)}#atcOnlineAd img{display:block;width:100%;max-height:150px;object-fit:contain;background:#fff}#atcOnlineAd a{display:block;text-decoration:none}#atcOnlineAd .atc-ad-dots{display:flex;justify-content:center;gap:5px;padding:5px;background:#f8fafc}#atcOnlineAd .atc-ad-dots i{display:block;width:6px;height:6px;border-radius:50%;background:#94a3b8}#atcOnlineAd .atc-ad-dots i.active{background:#0f766e}@media print{#atcOnlineAd{display:none!important}}
+#atcOnlineAd{display:none;position:sticky;top:var(--atc-ad-sticky-top,64px);z-index:999;max-width:980px;margin:0 auto 14px;padding:8px 12px;box-sizing:border-box;direction:rtl;background:var(--bg-main,#fff)}
+#atcOnlineAd .atc-ad-inner{position:relative;aspect-ratio:4/1;width:100%;border:1px solid rgba(100,116,139,.25);border-radius:12px;overflow:hidden;background:#f8fafc;box-shadow:0 2px 8px rgba(15,23,42,.08)}
+#atcOnlineAd a{display:block;width:100%;height:100%;text-decoration:none}
+#atcOnlineAd img{display:block;width:100%;height:100%;max-height:none;aspect-ratio:4/1;object-fit:contain;background:#fff}
+#atcOnlineAd .atc-ad-dots{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:5px;padding:4px 7px;border-radius:20px;background:rgba(248,250,252,.78)}
+#atcOnlineAd .atc-ad-dots i{display:block;width:6px;height:6px;border-radius:50%;background:#94a3b8}
+#atcOnlineAd .atc-ad-dots i.active{background:#0f766e}
+@media(max-width:520px){#atcOnlineAd{padding:6px 8px;margin-bottom:10px}#atcOnlineAd .atc-ad-inner{border-radius:9px}}
+@media print{#atcOnlineAd{display:none!important}}
 </style>
 
 </head>
@@ -3743,7 +3751,7 @@ class AppController {
     let html = '';
     allNotes.forEach(n => {
       html += `
-        <div class="card p-3 mb-2">
+        <div class="card p-3 mb-2" data-note-id="${n.id}" data-note-date="${n.dateStr || ''}">
           <div class="d-flex justify-content-between align-items-start mb-2">
             <div>
               <span class="badge bg-secondary mb-1">${this.cal.toPersianDigits(n.dateStr || '')}</span>
@@ -4342,5 +4350,91 @@ window.appController = new AppController();
 
 </script>
 <script id="atc-pwa-register">if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+<script id="atc-reminder-features">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id), TEAM_KEY='atc_calendar_team_reminder_v1', FIRED_KEY='atc_calendar_reminders_fired_v1', DB='atc_calendar_reminder_audio';
+const readTeam=()=>{try{return Object.assign({enabled:false,team:2,leadHours:12,mode:'both',sound:'chime'},JSON.parse(localStorage.getItem(TEAM_KEY)||'{}'));}catch(e){return {enabled:false,team:2,leadHours:12,mode:'both',sound:'chime'};}};
+let team=readTeam(),ctx=null,fired=new Set();try{fired=new Set(JSON.parse(localStorage.getItem(FIRED_KEY)||'[]'));}catch(e){}
+const saveFired=()=>{try{localStorage.setItem(FIRED_KEY,JSON.stringify(Array.from(fired).slice(-1500)));}catch(e){}};
+const soundOpts='<option value="chime">زنگ ملایم</option><option value="alarm">آلارم متناوب</option><option value="double">دو بوق</option><option value="custom">آهنگ دلخواه بارگذاری‌شده</option>';
+const modeOpts='<option value="sound">فقط هشدار صوتی</option><option value="notification">فقط نوتیفیکیشن متنی</option><option value="both">هشدار صوتی و نوتیفیکیشن</option>';
+function dbOpen(){return new Promise((ok,no)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('audio'))r.result.createObjectStore('audio');};r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);});}
+async function putAudio(key,file){const db=await dbOpen();return new Promise((ok,no)=>{const tx=db.transaction('audio','readwrite');tx.objectStore('audio').put({blob:file,name:file.name},key);tx.oncomplete=()=>{db.close();ok();};tx.onerror=()=>{db.close();no(tx.error);};});}
+async function getAudio(key){const db=await dbOpen();return new Promise((ok,no)=>{const tx=db.transaction('audio','readonly'),r=tx.objectStore('audio').get(key);r.onsuccess=()=>{db.close();ok(r.result||null);};r.onerror=()=>{db.close();no(r.error);};});}
+async function playSound(kind,key){
+ if(kind==='custom'){try{const item=await getAudio(key);if(item&&item.blob){const url=URL.createObjectURL(item.blob),audio=new Audio(url);audio.onended=()=>URL.revokeObjectURL(url);await audio.play();return;}}catch(e){}}
+ try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;if(!ctx)ctx=new C();if(ctx.state==='suspended')await ctx.resume();
+ const seq=kind==='alarm'?[880,660,880,660]:kind==='double'?[740,740,988]:[660,880,1046],start=ctx.currentTime;
+ seq.forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain(),t=start+i*(kind==='alarm'?.28:.24);o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.16,t+.025);g.gain.exponentialRampToValueAtTime(.0001,t+.2);o.connect(g);g.connect(ctx.destination);o.start(t);o.stop(t+.22);});
+ }catch(e){console.warn('Audio reminder unavailable',e);}
+}
+async function askPermission(){if(!('Notification'in window))return false;if(Notification.permission==='granted')return true;if(Notification.permission==='denied')return false;try{return await Notification.requestPermission()==='granted';}catch(e){return false;}}
+async function notify(title,body,tag){if(!('Notification'in window)||Notification.permission!=='granted')return false;const opt={body,tag,renotify:false,icon:'./icons/icon.svg',badge:'./icons/icon.svg',data:{url:location.href}};try{if('serviceWorker'in navigator){const reg=await navigator.serviceWorker.ready;await reg.showNotification(title,opt);}else new Notification(title,opt);return true;}catch(e){try{new Notification(title,opt);return true;}catch(e2){return false;}}}
+function toast(msg){let el=$('atcReminderToast');if(!el){el=document.createElement('div');el.id='atcReminderToast';el.style.cssText='position:fixed;top:76px;left:12px;right:12px;z-index:3000;padding:12px;border-radius:14px;background:#123b64;color:white;box-shadow:0 5px 20px #0004;text-align:center;font-weight:700';document.body.appendChild(el);}el.textContent=msg;el.style.display='block';clearTimeout(el._timer);el._timer=setTimeout(()=>el.style.display='none',7000);}
+async function deliver(mode,sound,audioKey,title,body,key){if(mode==='sound'||mode==='both')await playSound(sound,audioKey);if(mode==='notification'||mode==='both'){if(!await notify(title,body,key))toast(body+' (مجوز نوتیفیکیشن فعال نیست)');}}
+function mark(key){if(fired.has(key))return false;fired.add(key);saveFired();return true;}
+function atTime(d,hm){const p=String(hm||'07:00').split(':').map(Number);return new Date(d.getFullYear(),d.getMonth(),d.getDate(),p[0]||0,p[1]||0);}
+function scanTeam(now){
+ if(!team.enabled||!window.shiftCalculator)return;const sh=window.shiftCalculator,n=sh.shiftsPer24h||2;
+ for(let k=0;k<=18;k++){const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()+k),t=sh.getTeamsForDate(d),slots=[{team:t.dayTeam,time:sh.dayShiftStart||'07:00',label:'روزکاری'}];
+ if(n===3)slots.push({team:t.eveningTeam,time:sh.eveningShiftStart||'15:00',label:'عصرکاری'});
+ if(n>=2)slots.push({team:t.nightTeam,time:sh.nightShiftStart||(n===3?'23:00':'19:00'),label:'شبکاری'});
+ slots.forEach(s=>{if(Number(s.team)!==Number(team.team))return;const start=atTime(d,s.time);if(start<=now)return;const lead=Math.max(0,Math.min(48,Number(team.leadHours)||0)),alertAt=start.getTime()-lead*3600000,key='team:'+team.team+':'+s.label+':'+start.getTime();if(now.getTime()>=alertAt&&mark(key))deliver(team.mode,team.sound,'team','یادآوری شیفت تیم '+team.team,'شیفت '+s.label+' تیم '+team.team+' در ساعت '+s.time+' آغاز می‌شود.',key);});
+ }
+}
+function scanNotes(now){if(!window.notesManager)return;window.notesManager.getAllNotes().forEach(n=>{const r=n.reminder;if(!r||!r.enabled||!r.at)return;const when=new Date(r.at);if(!Number.isFinite(when.getTime())||when<=now)return;const lead=Math.max(0,Math.min(48,Number(r.leadHours)||0)),key='note:'+n.id+':'+when.getTime();if(now.getTime()>=when.getTime()-lead*3600000&&mark(key))deliver(r.mode||'both',r.sound||'chime','note-'+n.id,'یادآوری یادداشت: '+(n.title||'یادداشت'),'زمان یادآوری یادداشت فرا رسیده است: '+(n.title||''),key);});}
+function tick(){const now=new Date();scanTeam(now);scanNotes(now);}
+function addTeamCard(){
+ const sec=$('tab-teams');if(!sec||$('atcTeamReminderCard'))return;const first=sec.querySelector('.card');if(!first)return;
+ const card=document.createElement('div');card.id='atcTeamReminderCard';card.className='card p-3 mb-3';
+ card.innerHTML='<div class="d-flex align-items-center justify-content-between mb-2"><h5 class="fw-bold mb-0"><i class="bi bi-bell-fill text-warning me-2"></i>تنظیمات هشدار شیفت کاری</h5><span class="badge bg-secondary">تا ۴۸ ساعت قبل</span></div>'+
+ '<div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="atcTeamEnabled"><label class="form-check-label fw-bold" for="atcTeamEnabled">روشن کردن هشدار</label></div>'+
+ '<div class="row g-2"><div class="col-6"><label class="form-label small" for="atcTeamNumber">انتخاب تیم</label><select class="form-select" id="atcTeamNumber"><option value="1">تیم ۱</option><option value="2">تیم ۲</option><option value="3">تیم ۳</option><option value="4">تیم ۴</option><option value="5">تیم ۵</option></select></div>'+
+ '<div class="col-6"><label class="form-label small" for="atcTeamLead">چند ساعت قبل؟ (۰ تا ۴۸)</label><input class="form-control" id="atcTeamLead" type="number" min="0" max="48" step="1"></div>'+
+ '<div class="col-12"><label class="form-label small" for="atcTeamMode">حالت هشدار</label><select class="form-select" id="atcTeamMode">'+modeOpts+'</select></div>'+
+ '<div class="col-12"><label class="form-label small" for="atcTeamSound">انتخاب آهنگ هشدار</label><select class="form-select" id="atcTeamSound">'+soundOpts+'</select></div>'+
+ '<div class="col-12"><label class="form-label small" for="atcTeamFile">بارگذاری آهنگ دلخواه (حداکثر ۳ مگابایت)</label><input class="form-control" type="file" id="atcTeamFile" accept="audio/*"></div></div>'+
+ '<div class="d-flex flex-wrap gap-2 mt-3"><button class="btn btn-primary btn-sm" id="atcTeamSave" type="button">ذخیره تنظیمات</button><button class="btn btn-outline-secondary btn-sm" id="atcTeamTest" type="button">آزمایش صدا</button><button class="btn btn-outline-info btn-sm" id="atcNotifyPermission" type="button">فعال‌سازی نوتیفیکیشن</button></div>'+
+ '<p class="small text-muted mt-3 mb-0">برای اجرای هشدار زمان‌بندی‌شده، تقویم باید باز یا در پس‌زمینه فعال باشد. هشدار هنگام بسته‌بودن کامل برنامه به سرویس پوش مستقل نیاز دارد.</p>';
+ first.insertAdjacentElement('afterend',card);
+ $('atcTeamEnabled').checked=!!team.enabled;$('atcTeamNumber').value=String(team.team||2);$('atcTeamLead').value=String(team.leadHours??12);$('atcTeamMode').value=team.mode||'both';$('atcTeamSound').value=team.sound||'chime';
+ const picker=$('teamSelectPicker');if(picker)picker.addEventListener('change',()=>{$('atcTeamNumber').value=picker.value;});
+ $('atcTeamSave').addEventListener('click',async()=>{team={enabled:$('atcTeamEnabled').checked,team:Number($('atcTeamNumber').value),leadHours:Math.max(0,Math.min(48,Number($('atcTeamLead').value)||0)),mode:$('atcTeamMode').value,sound:$('atcTeamSound').value};localStorage.setItem(TEAM_KEY,JSON.stringify(team));if(team.enabled&&team.mode!=='sound')await askPermission();toast('تنظیمات هشدار شیفت ذخیره شد.');tick();});
+ $('atcTeamTest').addEventListener('click',()=>playSound($('atcTeamSound').value,'team'));
+ $('atcNotifyPermission').addEventListener('click',async()=>toast(await askPermission()?'مجوز نوتیفیکیشن فعال شد.':'مجوز نوتیفیکیشن فعال نشد؛ تنظیمات مرورگر را بررسی کنید.'));
+ $('atcTeamFile').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;if(f.size>3*1024*1024){alert('حجم آهنگ باید کمتر از ۳ مگابایت باشد.');e.target.value='';return;}try{await putAudio('team',f);$('atcTeamSound').value='custom';toast('آهنگ دلخواه ذخیره شد.');}catch(err){alert('ذخیره آهنگ انجام نشد.');}});
+}
+function defaultNoteAt(dateStr){if(!dateStr||!window.calendarEngine)return '';const p=String(dateStr).split('-').map(Number);if(p.length!==3)return '';try{const g=window.calendarEngine.jalaliToGregorian(p[0],p[1],p[2]);return String(g.gy).padStart(4,'0')+'-'+String(g.gm).padStart(2,'0')+'-'+String(g.gd).padStart(2,'0')+'T09:00';}catch(e){return '';}}
+function injectNotes(){
+ const list=$('notesMainList');if(!list||!window.notesManager)return;
+ list.querySelectorAll('[data-note-id]').forEach(card=>{
+  if(card.querySelector('.atc-note-reminder'))return;const id=card.getAttribute('data-note-id'),note=window.notesManager.getAllNotes().find(n=>String(n.id)===String(id));if(!note)return;const r=note.reminder||{},panel=document.createElement('div');panel.className='atc-note-reminder mt-3 pt-3 border-top';
+  panel.innerHTML='<div class="d-flex justify-content-between align-items-center mb-2"><strong class="small"><i class="bi bi-bell text-warning me-1"></i>تنظیم هشدار این یادداشت</strong><span class="badge bg-secondary">مستقل</span></div>'+
+  '<div class="form-check form-switch mb-2"><input class="form-check-input atcNoteEnabled" type="checkbox"><label class="form-check-label small">روشن کردن هشدار</label></div>'+
+  '<div class="row g-2"><div class="col-12"><label class="form-label small mb-1">تاریخ و ساعت یادآوری</label><input type="datetime-local" class="form-control form-control-sm atcNoteAt"></div>'+
+  '<div class="col-6"><label class="form-label small mb-1">چند ساعت قبل؟ (۰ تا ۴۸)</label><input type="number" min="0" max="48" step="1" class="form-control form-control-sm atcNoteLead"></div>'+
+  '<div class="col-6"><label class="form-label small mb-1">حالت هشدار</label><select class="form-select form-select-sm atcNoteMode">'+modeOpts+'</select></div>'+
+  '<div class="col-12"><label class="form-label small mb-1">انتخاب آهنگ</label><select class="form-select form-select-sm atcNoteSound">'+soundOpts+'</select></div>'+
+  '<div class="col-12"><label class="form-label small mb-1">بارگذاری آهنگ اختصاصی (حداکثر ۳ مگابایت)</label><input type="file" accept="audio/*" class="form-control form-control-sm atcNoteFile"></div></div>'+
+  '<div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-primary btn-sm atcNoteSave">ذخیره هشدار</button><button type="button" class="btn btn-outline-secondary btn-sm atcNoteTest">آزمایش صدا</button></div>';
+  card.appendChild(panel);panel.querySelector('.atcNoteEnabled').checked=!!r.enabled;panel.querySelector('.atcNoteAt').value=r.at||defaultNoteAt(note.dateStr);panel.querySelector('.atcNoteLead').value=String(r.leadHours??0);panel.querySelector('.atcNoteMode').value=r.mode||'both';panel.querySelector('.atcNoteSound').value=r.sound||'chime';
+ });
+}
+function initNotes(){
+ const list=$('notesMainList');if(!list)return;
+ list.addEventListener('click',async e=>{
+  const save=e.target.closest('.atcNoteSave'),test=e.target.closest('.atcNoteTest');
+  if(save){const panel=save.closest('.atc-note-reminder'),card=save.closest('[data-note-id]'),id=card.getAttribute('data-note-id'),n=window.notesManager.getAllNotes().find(x=>String(x.id)===String(id));if(!n)return;const at=panel.querySelector('.atcNoteAt').value,enabled=panel.querySelector('.atcNoteEnabled').checked;if(enabled&&!at){alert('لطفاً تاریخ و ساعت یادآوری را مشخص کنید.');return;}const r={enabled,at,leadHours:Math.max(0,Math.min(48,Number(panel.querySelector('.atcNoteLead').value)||0)),mode:panel.querySelector('.atcNoteMode').value,sound:panel.querySelector('.atcNoteSound').value};if(enabled&&r.mode!=='sound')await askPermission();window.notesManager.saveNote(Object.assign({},n,{reminder:r}));toast('هشدار این یادداشت ذخیره شد.');tick();}
+  if(test){const p=test.closest('.atc-note-reminder'),c=test.closest('[data-note-id]');playSound(p.querySelector('.atcNoteSound').value,'note-'+c.getAttribute('data-note-id'));}
+ });
+ list.addEventListener('change',async e=>{const input=e.target.closest('.atcNoteFile');if(!input)return;const c=input.closest('[data-note-id]'),id=c&&c.getAttribute('data-note-id'),f=input.files&&input.files[0];if(!f||!id)return;if(f.size>3*1024*1024){alert('حجم آهنگ باید کمتر از ۳ مگابایت باشد.');input.value='';return;}try{await putAudio('note-'+id,f);input.closest('.atc-note-reminder').querySelector('.atcNoteSound').value='custom';toast('آهنگ اختصاصی یادداشت ذخیره شد.');}catch(err){alert('ذخیره آهنگ انجام نشد.');}});
+ new MutationObserver(()=>setTimeout(injectNotes,0)).observe(list,{childList:true,subtree:true});injectNotes();
+}
+function stickyAd(){const h=document.querySelector('.app-bar');if(!h)return;const update=()=>document.documentElement.style.setProperty('--atc-ad-sticky-top',Math.ceil(h.getBoundingClientRect().height)+'px');update();if('ResizeObserver'in window)new ResizeObserver(update).observe(h);window.addEventListener('resize',update);}
+function init(){addTeamCard();initNotes();injectNotes();stickyAd();tick();setInterval(tick,10000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body>
 </html>
