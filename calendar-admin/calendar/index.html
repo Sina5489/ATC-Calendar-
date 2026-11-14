@@ -4388,8 +4388,8 @@ function tick(){const now=new Date();scanTeam(now);scanNotes(now);}
 function addTeamCard(){
  const sec=$('tab-teams');if(!sec||$('atcTeamReminderCard'))return;const first=sec.querySelector('.card');if(!first)return;
  const card=document.createElement('div');card.id='atcTeamReminderCard';card.className='card p-3 mb-3';
- card.innerHTML='<div class="d-flex align-items-center justify-content-between mb-2"><h5 class="fw-bold mb-0"><i class="bi bi-bell-fill text-warning me-2"></i>تنظیمات هشدار شیفت کاری</h5><span class="badge bg-secondary">تا ۴۸ ساعت قبل</span></div>'+
- '<div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="atcTeamEnabled"><label class="form-check-label fw-bold" for="atcTeamEnabled">روشن کردن هشدار</label></div>'+
+ card.innerHTML='<div class="d-flex align-items-center justify-content-between mb-2"><h5 class="fw-bold mb-0"><i class="bi bi-bell-fill text-warning me-2"></i>تنظیمات یادآوری شیفت تیم‌ها</h5><span class="badge bg-secondary">تا ۴۸ ساعت قبل</span></div>'+
+ '<div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="atcTeamEnabled"><label class="form-check-label fw-bold" for="atcTeamEnabled">فعال‌سازی یادآوری</label></div>'+
  '<div class="row g-2"><div class="col-6"><label class="form-label small" for="atcTeamNumber">انتخاب تیم</label><select class="form-select" id="atcTeamNumber"><option value="1">تیم ۱</option><option value="2">تیم ۲</option><option value="3">تیم ۳</option><option value="4">تیم ۴</option><option value="5">تیم ۵</option></select></div>'+
  '<div class="col-6"><label class="form-label small" for="atcTeamLead">چند ساعت قبل؟ (۰ تا ۴۸)</label><input class="form-control" id="atcTeamLead" type="number" min="0" max="48" step="1"></div>'+
  '<div class="col-12"><label class="form-label small" for="atcTeamMode">حالت هشدار</label><select class="form-select" id="atcTeamMode">'+modeOpts+'</select></div>'+
@@ -4410,8 +4410,8 @@ function injectNotes(){
  const list=$('notesMainList');if(!list||!window.notesManager)return;
  list.querySelectorAll('[data-note-id]').forEach(card=>{
   if(card.querySelector('.atc-note-reminder'))return;const id=card.getAttribute('data-note-id'),note=window.notesManager.getAllNotes().find(n=>String(n.id)===String(id));if(!note)return;const r=note.reminder||{},panel=document.createElement('div');panel.className='atc-note-reminder mt-3 pt-3 border-top';
-  panel.innerHTML='<div class="d-flex justify-content-between align-items-center mb-2"><strong class="small"><i class="bi bi-bell text-warning me-1"></i>تنظیم هشدار این یادداشت</strong><span class="badge bg-secondary">مستقل</span></div>'+
-  '<div class="form-check form-switch mb-2"><input class="form-check-input atcNoteEnabled" type="checkbox"><label class="form-check-label small">روشن کردن هشدار</label></div>'+
+  panel.innerHTML='<div class="d-flex justify-content-between align-items-center mb-2"><strong class="small"><i class="bi bi-bell text-warning me-1"></i>تنظیم یادآوری این یادداشت</strong><span class="badge bg-secondary">مستقل</span></div>'+
+  '<div class="form-check form-switch mb-2"><input class="form-check-input atcNoteEnabled" type="checkbox"><label class="form-check-label small">فعال‌سازی یادآوری</label></div>'+
   '<div class="row g-2"><div class="col-12"><label class="form-label small mb-1">تاریخ و ساعت یادآوری</label><input type="datetime-local" class="form-control form-control-sm atcNoteAt"></div>'+
   '<div class="col-6"><label class="form-label small mb-1">چند ساعت قبل؟ (۰ تا ۴۸)</label><input type="number" min="0" max="48" step="1" class="form-control form-control-sm atcNoteLead"></div>'+
   '<div class="col-6"><label class="form-label small mb-1">حالت هشدار</label><select class="form-select form-select-sm atcNoteMode">'+modeOpts+'</select></div>'+
