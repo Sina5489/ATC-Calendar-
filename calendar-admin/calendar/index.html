@@ -726,9 +726,6 @@ body.light-theme .btn-primary {
 #atcOnlineAd .atc-ad-inner{position:relative;aspect-ratio:4/1;width:100%;border:1px solid rgba(100,116,139,.25);border-radius:12px;overflow:hidden;background:#f8fafc;box-shadow:0 2px 8px rgba(15,23,42,.08)}
 #atcOnlineAd a{display:block;width:100%;height:100%;text-decoration:none}
 #atcOnlineAd img{display:block;width:100%;height:100%;max-height:none;aspect-ratio:4/1;object-fit:contain;background:#fff}
-#atcOnlineAd .atc-ad-dots{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;justify-content:center;gap:5px;padding:4px 7px;border-radius:20px;background:rgba(248,250,252,.78)}
-#atcOnlineAd .atc-ad-dots i{display:block;width:6px;height:6px;border-radius:50%;background:#94a3b8}
-#atcOnlineAd .atc-ad-dots i.active{background:#0f766e}
 @media(max-width:520px){#atcOnlineAd{padding:6px 8px;margin-bottom:10px}#atcOnlineAd .atc-ad-inner{border-radius:9px}}
 @media print{#atcOnlineAd{display:none!important}}
 </style>
@@ -757,7 +754,6 @@ if (!navigator.onLine) {
 <div id="atcOnlineAd" class="no-print" aria-label="تبلیغات">
   <div class="atc-ad-inner">
     <a id="atcOnlineAdLink" href="#" target="_blank" rel="noopener noreferrer" aria-label="مشاهده تبلیغ"><img id="atcOnlineAdImage" alt="تبلیغ" loading="eager" fetchpriority="high" decoding="async"></a>
-    <div class="atc-ad-dots" id="atcOnlineAdDots" aria-hidden="true"></div>
   </div>
 </div>
 <script id="atc-online-ad-loader">
@@ -767,12 +763,11 @@ if (!navigator.onLine) {
   const wrap=document.getElementById('atcOnlineAd');
   const img=document.getElementById('atcOnlineAdImage');
   const link=document.getElementById('atcOnlineAdLink');
-  const dots=document.getElementById('atcOnlineAdDots');
   if(!wrap||!img||!link)return;
   let activeSlides=[],index=0,timer=null,refreshTimer=null;
   const now=()=>Date.now();
   const valid=(s,global)=>{const start=s.start_at||global.start_at,end=s.end_at||global.end_at,t=now();return (!start||!Number.isFinite(Date.parse(start))||t>=Date.parse(start))&&(!end||!Number.isFinite(Date.parse(end))||t<=Date.parse(end));};
-  function show(i){if(!activeSlides.length){wrap.style.display='none';return;}index=(i+activeSlides.length)%activeSlides.length;const s=activeSlides[index];img.onload=()=>{wrap.style.display='block';};img.onerror=()=>{wrap.style.display='none';};img.src=s.image_url;link.href=s.target_url||'#';link.style.pointerEvents=s.target_url?'auto':'none';link.setAttribute('aria-label',s.target_url?'باز کردن پیوند تبلیغ':'تصویر تبلیغ');dots.innerHTML='';activeSlides.forEach((_,n)=>{const dot=document.createElement('i');dot.className=n===index?'active':'';dots.appendChild(dot);});if(timer)clearTimeout(timer);const sec=Math.max(3,Math.min(120,Number(s.duration_seconds)||Number(window.__atcAdGlobalSeconds)||8));if(activeSlides.length>1)timer=setTimeout(()=>show(index+1),sec*1000);}
+  function show(i){if(!activeSlides.length){wrap.style.display='none';return;}index=(i+activeSlides.length)%activeSlides.length;const s=activeSlides[index];img.onload=()=>{wrap.style.display='block';};img.onerror=()=>{wrap.style.display='none';};img.src=s.image_url;link.href=s.target_url||'#';link.style.pointerEvents=s.target_url?'auto':'none';link.setAttribute('aria-label',s.target_url?'باز کردن پیوند تبلیغ':'تصویر تبلیغ');if(timer)clearTimeout(timer);const sec=Math.max(3,Math.min(120,Number(s.duration_seconds)||Number(window.__atcAdGlobalSeconds)||8));if(activeSlides.length>1)timer=setTimeout(()=>show(index+1),sec*1000);}
   async function refresh(){if(!navigator.onLine)return;try{const r=await fetch(base+'/rest/v1/atc_ads?id=eq.1&select=image_url,target_url,is_active,slides,display_seconds,start_at,end_at',{headers:{apikey:anonKey,Accept:'application/json'}});if(!r.ok)throw Error('ad unavailable');const a=(await r.json())[0];if(!a||!a.is_active){activeSlides=[];wrap.style.display='none';if(timer)clearTimeout(timer);return;}window.__atcAdGlobalSeconds=a.display_seconds||8;const raw=Array.isArray(a.slides)?a.slides:[];activeSlides=raw.filter(x=>x&&x.image_url&&valid(x,a));if(!activeSlides.length&&a.image_url&&valid({},a))activeSlides=[{image_url:a.image_url,target_url:a.target_url||'',duration_seconds:a.display_seconds||8}];if(!activeSlides.length){wrap.style.display='none';if(timer)clearTimeout(timer);return;}if(index>=activeSlides.length)index=0;show(index);}catch(e){/* Keep the calendar usable when ads or network are unavailable. */}}
   refresh();refreshTimer=setInterval(refresh,60000);
   window.addEventListener('online',refresh);
