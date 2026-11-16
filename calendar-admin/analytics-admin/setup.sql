@@ -99,13 +99,13 @@ begin
     'apk_unique_visitors',count(distinct visitor_id) filter(where event_type='page_view' and platform='apk'),
     'sessions',count(*) filter(where event_type='session_start'),
     'last_30_days',coalesce((
-      select jsonb_agg(jsonb_build_object('day',d.day,'pwa',d.pwa,'apk',d.apk) order by d.day)
-      from (select date(created_at) day,
-        count(*) filter(where platform='pwa') pwa,
-        count(*) filter(where platform='apk') apk
+      select jsonb_agg(jsonb_build_object('day',d.visit_date,'pwa',d.pwa,'apk',d.apk) order by d.visit_date)
+      from (select date(created_at) as visit_date,
+        count(*) filter(where platform='pwa') as pwa,
+        count(*) filter(where platform='apk') as apk
         from public.atc_analytics_events
         where event_type='page_view' and created_at>=now()-interval '30 days'
-        group by date(created_at)) d
+        group by date(created_at)) as d
     ),'[]'::jsonb)
   ) into result from public.atc_analytics_events;
   return result;
